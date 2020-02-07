@@ -26,7 +26,7 @@
 #include <optional>
 #include <unordered_set>
 
-#include <boost/container_hash/hash.hpp>
+#include <boost/functional/hash.hpp>
 #include <boost/integer/common_factor.hpp>
 #include <boost/numeric/conversion/cast.hpp>
 
