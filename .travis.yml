@@ -8,7 +8,7 @@ addons:
       - ubuntu-toolchain-r-test
       - llvm-toolchain-xenial-8
     packages:
-      - gcc-8
+      - g++-8
       - libboost-all-dev
       - libgtest-dev
 
@@ -20,7 +20,7 @@ compiler:
 before_script:
   - mkdir build
   - cd build
-  - export CXX=g++8
+  - export CXX=g++-8
   - cmake ..
 
 script: make && make test
