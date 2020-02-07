@@ -6,11 +6,9 @@ addons:
   apt:
     sources:
       - ubuntu-toolchain-r-test
-      - llvm-toolchain-xenial-8
     packages:
       - g++-8
       - libboost-all-dev
-      - libgtest-dev
 
 dist: xenial
 
