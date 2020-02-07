@@ -4,5 +4,6 @@
 /cmake_install.cmake
 /gpsdo-config
 /perf.*
+/build/
 /*.a
 /*.so
