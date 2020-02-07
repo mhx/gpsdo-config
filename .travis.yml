@@ -11,9 +11,6 @@ addons:
       - gcc-8
       - libboost-all-dev
       - libgtest-dev
-    env:
-      - COMPILER=g++-8
-      - CXX=g++-8
 
 dist: xenial
 
@@ -23,6 +20,7 @@ compiler:
 before_script:
   - mkdir build
   - cd build
+  - export CXX=g++8
   - cmake ..
 
 script: make && make test
