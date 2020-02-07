@@ -1,3 +1,5 @@
+ [![Build Status](https://travis-ci.com/mhx/gpsdo-config.svg?branch=master)](https://travis-ci.com/mhx/gpsdo-config)
+
 # gpsdo-config
 
 Find GPS reference clock configuration from set of frequencies
