@@ -4,6 +4,9 @@ os: linux
 
 addons:
   apt:
+    sources:
+      - ubuntu-toolchain-r-test
+      - llvm-toolchain-xenial-8
     packages:
       - gcc-8
       - clang-8
