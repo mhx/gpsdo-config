@@ -23,6 +23,9 @@ CMAKE_MINIMUM_REQUIRED(VERSION 2.8)
 
 SET(CMAKE_BUILD_TYPE release)
 
+ENABLE_TESTING()
+INCLUDE(GoogleTest)
+
 FIND_PACKAGE(Boost 1.62 REQUIRED COMPONENTS
              program_options)
 
@@ -38,10 +41,22 @@ ADD_EXECUTABLE(gpsdo-config
                main
               )
 
+ADD_EXECUTABLE(solver_test
+               test/solver_test
+              )
+
 TARGET_LINK_LIBRARIES(gpsdo-config
                       gpsdo_solver
                       Boost::program_options
                      )
+
+TARGET_LINK_LIBRARIES(solver_test
+                      gpsdo_solver
+                      gtest
+                      gtest_main
+                     )
+
+gtest_discover_tests(solver_test)
 
 INSTALL(TARGETS gpsdo-config
         RUNTIME DESTINATION bin)
