@@ -7,7 +7,8 @@ compiler:
   - gcc
 
 install:
-  - sudo apt install libboost-all-dev libgtest-dev
+  - sudo apt-get update
+  - sudo apt-get -y install libboost-all-dev libgtest-dev
 
 before_script:
   - mkdir build
