@@ -197,8 +197,8 @@ std::vector<solution> find_solutions(
               });
 
           for (auto N2_HS : n2_hs_val) {
-            auto f3_n2 = fOSC / N2_HS;
-            auto N31_cand = 2 * f3_n2.denominator();
+            auto f3_n2 = fOSC / (2 * N2_HS);
+            auto N31_cand = f3_n2.denominator();
 
             if (N31_cand <= N3_MAX) {
               auto gps_hi
