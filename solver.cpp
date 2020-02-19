@@ -61,7 +61,11 @@ bool is_div_one_or_even(rat64 a, rat64 b) {
 bool is_in_ncx_ls_range(int64_t n) {
   // n = 1 should be supported according to the Silicon Labs Si53xx
   // documentation, but writing a value 1 to the GPS reference clock
-  // doesn't work as intended
+  // doesn't work as intended.
+  //
+  // Turns out that it's an undocumented "feature" that n = 1 isn't
+  // supported in CMOS mode.
+  // (See https://github.com/simontheu/lb-gps-linux/issues/4)
   return /* n == 1 or */ (n <= (1 << 20) and n % 2 == 0);
 }
 
