@@ -41,6 +41,7 @@ Options:
   --any                 find any possible solution
   --best                find best possible solution
   -v [ --verbose ]      print more information
+  --relaxed             use relaxed VCO limits
   --cmdline             print command line config
   --json                print solutions as json objects
   -h [ --help ]         produce help message
