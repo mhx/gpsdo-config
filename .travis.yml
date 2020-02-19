@@ -19,6 +19,6 @@ before_script:
   - mkdir build
   - cd build
   - export CXX=g++-8
-  - cmake .. -D WITH_TESTS=1
+  - cmake -D WITH_TESTS=1 ..
 
 script: make && make test
