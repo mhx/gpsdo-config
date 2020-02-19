@@ -59,7 +59,10 @@ bool is_div_one_or_even(rat64 a, rat64 b) {
 }
 
 bool is_in_ncx_ls_range(int64_t n) {
-  return n == 1 or (n <= (1 << 20) and n % 2 == 0);
+  // n = 1 should be supported according to the Silicon Labs Si53xx
+  // documentation, but writing a value 1 to the GPS reference clock
+  // doesn't work as intended
+  return /* n == 1 or */ (n <= (1 << 20) and n % 2 == 0);
 }
 
 std::vector<int32_t> factorize(int64_t n) {
