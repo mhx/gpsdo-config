@@ -126,7 +126,7 @@ int gpsdo_main(int argc, char** argv) {
   using namespace gpsdo_config;
 
   bool find_all = false, find_any = false, find_best = false, verbose = false,
-       cmdline = false, json = false;
+       cmdline = false, json = false, relaxed = false;
   std::string f1_str, f2_str;
 
   po::options_description desc("Options");
@@ -138,6 +138,7 @@ int gpsdo_main(int argc, char** argv) {
       ("any", po::bool_switch(&find_any), "find any possible solution")
       ("best", po::bool_switch(&find_best), "find best possible solution")
       ("verbose,v", po::bool_switch(&verbose), "print more information")
+      ("relaxed", po::bool_switch(&relaxed), "use relaxed VCO limits")
       ("cmdline", po::bool_switch(&cmdline), "print command line config")
       ("json", po::bool_switch(&json), "print solutions as json objects")
       ("help,h", "produce help message");
@@ -206,8 +207,19 @@ int gpsdo_main(int argc, char** argv) {
       .GPS_HI = 10'000'000,
   };
 
+  hardware_limits relaxed_limits{
+      // Source: lb-gps-linux source code
+      .VCO_LO = 3'500'000'000,
+      .VCO_HI = 6'500'000'000,
+      .F3_LO = 2'000,
+      .F3_HI = 2'000'000,
+
+      // Source: ublox MAX-M8 series data sheet
+      .GPS_HI = 10'000'000,
+  };
+
   auto solutions = find_solutions(
-      f1, f2, limits,
+      f1, f2, relaxed ? relaxed_limits : limits,
       find_all ? find::all
                : find_any ? find::any : find_best ? find::best : find::good);
 
