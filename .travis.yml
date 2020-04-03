@@ -5,9 +5,9 @@ os: linux
 addons:
   apt:
     sources:
-      - ubuntu-toolchain-r-test
+      - sourceline: "ppa:ubuntu-toolchain-r/test"
     packages:
-      - g++-8
+      - g++-9
       - libboost-all-dev
 
 dist: xenial
@@ -18,7 +18,7 @@ compiler:
 before_script:
   - mkdir build
   - cd build
-  - export CXX=g++-8
+  - export CXX=g++-9
   - cmake -D WITH_TESTS=1 ..
 
 script: make && make test
