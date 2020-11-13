@@ -106,7 +106,7 @@ void gpsdo_usage(
      << "phase detector comparison frequency (f3), which directly impacts\n"
      << "jitter/phase noise. `--best` will always search for the solution\n"
      << "with the highest possible f3. The default behaviour will accept\n"
-     << "any f3 that is higher than 50\% of the maximum value.\n\n"
+     << "any f3 that is higher than 50% of the maximum value.\n\n"
      << "Output for `--json` and `--cmdline` will always be exclusively\n"
      << "written to stdout, suitable for processing by other commands.\n"
      << "All other output will be written to stderr.\n\n"
