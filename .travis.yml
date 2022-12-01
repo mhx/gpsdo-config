@@ -7,6 +7,8 @@ dist: jammy
 addons:
   apt:
     packages:
+      - cmake
+      - make
       - libboost-program-options-dev
 
 compiler:
@@ -18,4 +20,6 @@ before_script:
   - cd build
   - cmake -D WITH_TESTS=1 ..
 
-script: make -j$(nproc) && make test
+script:
+  - make -j$(nproc)
+  - make test
