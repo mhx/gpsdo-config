@@ -2,12 +2,12 @@ language: cpp
 
 os: linux
 
+dist: jammy
+
 addons:
   apt:
     packages:
-      - libboost-all-dev
-
-dist: focal
+      - libboost-program-options-dev
 
 compiler:
   - gcc
