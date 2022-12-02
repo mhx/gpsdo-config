@@ -7,14 +7,12 @@ dist: jammy
 addons:
   apt:
     packages:
-      - clang
       - cmake
       - make
       - libboost-program-options-dev
 
 compiler:
   - gcc
-  - clang
 
 before_script:
   - mkdir build
