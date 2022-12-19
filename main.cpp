@@ -220,8 +220,10 @@ int gpsdo_main(int argc, char** argv) {
 
   auto solutions = find_solutions(
       f1, f2, relaxed ? relaxed_limits : limits,
-      find_all ? find::all
-               : find_any ? find::any : find_best ? find::best : find::good);
+      find_all    ? find::all
+      : find_any  ? find::any
+      : find_best ? find::best
+                  : find::good);
 
   if (solutions.empty()) {
     std::cerr << "no solutions found" << std::endl;
