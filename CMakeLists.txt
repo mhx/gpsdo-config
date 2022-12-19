@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2020 Marcus Holland-Moritz (github@mhxnet.de)
+# Copyright (c) Marcus Holland-Moritz (github@mhxnet.de)
 #
 # This file is part of gpsdo-config.
 #
