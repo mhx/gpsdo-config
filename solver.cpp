@@ -22,6 +22,7 @@
 #include "solver.h"
 
 #include <algorithm>
+#include <cassert>
 #include <numeric>
 #include <optional>
 #include <unordered_set>
@@ -46,6 +47,9 @@ namespace gpsdo_config {
 
 namespace {
 
+/**
+ * Find the least common multiple of two rational numbers
+ */
 rat64 rat_lcm(rat64 r1, rat64 r2) {
   int64_t den = boost::integer::lcm(r1.denominator(), r2.denominator());
   int64_t num = boost::integer::lcm(
@@ -54,10 +58,7 @@ rat64 rat_lcm(rat64 r1, rat64 r2) {
   return rat64(num, den);
 }
 
-bool is_div_one_or_even(rat64 a, rat64 b) {
-  return a == b or boost::rational_cast<int64_t>(a / b) % 2 == 0;
-}
-
+#ifndef NDEBUG
 bool is_in_ncx_ls_range(int64_t n) {
   // n = 1 should be supported according to the Silicon Labs Si53xx
   // documentation, but writing a value 1 to the GPS reference clock
@@ -68,6 +69,7 @@ bool is_in_ncx_ls_range(int64_t n) {
   // (See https://github.com/simontheu/lb-gps-linux/issues/4)
   return /* n == 1 or */ (n <= (1 << 20) and n % 2 == 0);
 }
+#endif
 
 std::vector<int32_t> factorize(int64_t n) {
   std::vector<int32_t> factors;
@@ -152,6 +154,7 @@ void solution::write(std::ostream& os, bool verbose) const {
   }
 }
 
+// This allows sorting solutions in order of decreasing PLL frequency f3.
 bool solution::operator<(solution const& rhs) const {
   return static_cast<double>(fGPS) / N31
          > static_cast<double>(rhs.fGPS) / rhs.N31;
@@ -159,19 +162,42 @@ bool solution::operator<(solution const& rhs) const {
 
 std::vector<solution> find_solutions(
     rat64 f1, rat64 f2, hardware_limits const& limits, find algorithm) {
-  int64_t const N12_LS_MAX = 1 << 20;
-  int64_t const N3_MAX = 1 << 19;
-  auto lcm_freq = rat_lcm(f1, f2);
-  auto q_max
-      = boost::rational_cast<int64_t>(N12_LS_MAX * std::max(f1, f2) / lcm_freq);
+  int64_t constexpr NCn_LS_MAX = 1 << 20;
+  int64_t constexpr N2_LS_MAX = 1 << 20;
+  int64_t constexpr N3_MAX = 1 << 19;
 
-  if (!is_div_one_or_even(f1, lcm_freq) or !is_div_one_or_even(f2, lcm_freq)) {
-    // NCn_LS must be 1 or even
-    lcm_freq *= 2;
+  //
+  // We need to find a configuration for the Si53xx that can represent both
+  // frequencies f1 and f2. The frequencies generated are defined as follows:
+  //
+  //            fOSC             |  N1_HS  = [4, 5, ..., 11]
+  //   fn = --------------       |  NCn_LS = [2, 4, 6, ..., 2**20]
+  //        N1_HS * NCn_LS
+  //
+  // So we first need to find the least common multiple of both frequencies.
+  //
+  auto fLCM = rat_lcm(f1, f2);
+
+  //
+  // As NCn_LS must be even, we check if the LCM divides any of the frequencies
+  // into an odd number and double the LCM if necessary.
+  //
+  if (boost::rational_cast<int64_t>(fLCM / f1) % 2 != 0
+      or boost::rational_cast<int64_t>(fLCM / f2) % 2 != 0) {
+    fLCM *= 2;
   }
 
-  auto base_div1 = boost::rational_cast<int64_t>(lcm_freq / f1);
-  auto base_div2 = boost::rational_cast<int64_t>(lcm_freq / f2);
+  //
+  // We can now compute the base divisors for both frequencies. NC1_LS and
+  // NC2_LS must be integer multiples of these divisors:
+  //
+  //   NCn_LS = q * fn_div
+  //
+  auto const f1_div = boost::rational_cast<int64_t>(fLCM / f1);
+  auto const f2_div = boost::rational_cast<int64_t>(fLCM / f2);
+
+  // Compute the maximum possible value of q to limit our search space.
+  auto const q_max = NCn_LS_MAX / std::max(f1_div, f2_div);
 
   std::unordered_set<rat64> fOSC_seen;
   std::vector<solution> solutions;
@@ -179,80 +205,115 @@ std::vector<solution> find_solutions(
   std::optional<find> found;
 
   for (uint32_t N1_HS = 11; N1_HS >= 4; --N1_HS) {
-    auto f_N1 = N1_HS * lcm_freq;
-    auto q_lo = std::min(
-        q_max, static_cast<int64_t>(std::ceil(
-                   boost::rational_cast<double>(limits.VCO_LO / f_N1))));
-    auto q_hi = std::min(
+    //
+    // We need a mulitple of fLCM at the output of the high speed divider N1_HS.
+    // fN1 is just fLCM before division by N1_HS.
+    //
+    //               fOSC
+    //   fn = ------------------  ,  fLCM = fn * fn_div
+    //        N1_HS * q * fn_div
+    //
+    //            fOSC
+    //   fLCM = ---------
+    //          N1_HS * q
+    //
+    //                        fOSC
+    //   fN1 = fLCM * N1_HS = ----
+    //                         q
+    //
+    auto const fN1 = N1_HS * fLCM;
+
+    // From the limits of the VCO imposed on fOSC, we can dervice bounds for q.
+    auto const q_lo = static_cast<int64_t>(
+        std::ceil(boost::rational_cast<double>(limits.VCO_LO / fN1)));
+    auto const q_hi = std::min(
         q_max, static_cast<int64_t>(std::floor(
-                   boost::rational_cast<double>(limits.VCO_HI / f_N1))));
+                   boost::rational_cast<double>(limits.VCO_HI / fN1))));
 
     for (uint32_t q = q_lo; q <= q_hi; ++q) {
-      int64_t const NC1_LS = q * base_div1;
-      int64_t const NC2_LS = q * base_div2;
+      int64_t const NC1_LS = q * f1_div;
+      int64_t const NC2_LS = q * f2_div;
 
-      if (is_in_ncx_ls_range(NC1_LS) and is_in_ncx_ls_range(NC2_LS)) {
-        auto fOSC = lcm_freq * q * N1_HS;
+      assert(is_in_ncx_ls_range(NC1_LS));
+      assert(is_in_ncx_ls_range(NC2_LS));
 
-        if (fOSC_seen.insert(fOSC).second) {
-          std::array<uint32_t, 8> n2_hs_val;
-          std::iota(n2_hs_val.rbegin(), n2_hs_val.rend(), 4);
-          std::stable_sort(
-              n2_hs_val.begin(), n2_hs_val.end(),
-              [&fOSC](uint32_t a, uint32_t b) {
-                return (fOSC / a).denominator() < (fOSC / b).denominator();
-              });
+      auto fOSC = fLCM * q * N1_HS;
 
-          for (auto N2_HS : n2_hs_val) {
-            auto f3_n2 = fOSC / (2 * N2_HS);
-            auto N31_cand = f3_n2.denominator();
+      if (fOSC_seen.insert(fOSC).second) {
+        // Generate a list of candidates for N2_HS. We start by filling the list
+        // with all allowed value in reverse order (the reason being that larger
+        // values for the high-speed divider result in lower power consumption).
+        std::array<uint32_t, 8> N2_HS_candidates;
+        std::iota(N2_HS_candidates.rbegin(), N2_HS_candidates.rend(), 4);
 
-            if (N31_cand <= N3_MAX) {
-              auto gps_hi
-                  = std::min<int64_t>(limits.GPS_HI, N31_cand * limits.F3_HI);
-              int64_t N2_LS_cand = 2;
-              int64_t fGPS;
+        // We now sort the list such that we minimize the denominators when
+        // dividing fOSC by the N2_HS candidate. This is in order to minimize
+        // N31, which allows us to keep f3 as high as possible.
+        std::stable_sort(
+            N2_HS_candidates.begin(), N2_HS_candidates.end(),
+            [&fOSC](uint32_t a, uint32_t b) {
+              return (fOSC / a).denominator() < (fOSC / b).denominator();
+            });
 
-              if (f3_n2.numerator() <= gps_hi) {
-                fGPS = f3_n2.numerator();
-              } else {
-                fGPS = largest_factor(f3_n2.numerator(), gps_hi);
-                N2_LS_cand *= f3_n2.numerator() / fGPS;
-              }
+        for (auto N2_HS : N2_HS_candidates) {
+          auto const f3_N2 = fOSC / (2 * N2_HS);
+          auto const N31_cand = f3_N2.denominator();
 
-              if (N2_LS_cand <= N12_LS_MAX
-                  and static_cast<double>(fGPS) / N31_cand >= limits.F3_LO) {
-                solution sol{
-                    .fGPS = boost::numeric_cast<uint32_t>(fGPS),
-                    .N31 = boost::numeric_cast<uint32_t>(N31_cand),
-                    .N1_HS = N1_HS,
-                    .NC1_LS = boost::numeric_cast<uint32_t>(NC1_LS),
-                    .NC2_LS = boost::numeric_cast<uint32_t>(NC2_LS),
-                    .N2_HS = N2_HS,
-                    .N2_LS = boost::numeric_cast<uint32_t>(N2_LS_cand),
-                };
+          if (N31_cand > N3_MAX) {
+            continue;
+          }
 
-                if (found and algorithm != find::all) {
-                  if (sol < solutions[0]) {
-                    solutions[0] = sol;
-                  }
-                } else {
-                  solutions.emplace_back(sol);
-                }
+          // Compute the upper limit for the GPS frequency.
+          auto const gps_hi
+              = std::min<int64_t>(limits.GPS_HI, N31_cand * limits.F3_HI);
+          int64_t N2_LS_cand = 2;
+          int64_t fGPS;
 
-                if (algorithm != find::all) {
-                  auto f3r = N31_cand * limits.F3_HI;
-                  auto fnd = f3r == fGPS
-                                 ? find::best
-                                 : f3r <= fGPS * 2 ? find::good : find::any;
-                  if (!found or fnd > *found) {
-                    found = fnd;
-                  }
-                  if (*found >= algorithm) {
-                    break;
-                  }
-                }
-              }
+          if (f3_N2.numerator() <= gps_hi) {
+            fGPS = f3_N2.numerator();
+          } else {
+            // Find the largest factor in f3_N2's numerator that is less than
+            // gps_hi.
+            fGPS = largest_factor(f3_N2.numerator(), gps_hi);
+            N2_LS_cand *= f3_N2.numerator() / fGPS;
+          }
+
+          if (N2_LS_cand > N2_LS_MAX
+              or static_cast<double>(fGPS) / N31_cand < limits.F3_LO) {
+            continue;
+          }
+
+          // We have found a new possible solution.
+          solution sol{
+              .fGPS = boost::numeric_cast<uint32_t>(fGPS),
+              .N31 = boost::numeric_cast<uint32_t>(N31_cand),
+              .N1_HS = N1_HS,
+              .NC1_LS = boost::numeric_cast<uint32_t>(NC1_LS),
+              .NC2_LS = boost::numeric_cast<uint32_t>(NC2_LS),
+              .N2_HS = N2_HS,
+              .N2_LS = boost::numeric_cast<uint32_t>(N2_LS_cand),
+          };
+
+          if (found and algorithm != find::all) {
+            if (sol < solutions[0]) {
+              solutions[0] = sol;
+            }
+          } else {
+            solutions.emplace_back(sol);
+          }
+
+          if (algorithm != find::all) {
+            auto f3r = N31_cand * limits.F3_HI;
+            auto fnd = f3r == fGPS       ? find::best
+                       : f3r <= fGPS * 2 ? find::good
+                                         : find::any;
+
+            if (!found or fnd > *found) {
+              found = fnd;
+            }
+
+            if (*found >= algorithm) {
+              break;
             }
           }
         }
