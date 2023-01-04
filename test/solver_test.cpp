@@ -5,7 +5,7 @@ using namespace gpsdo_config;
 
 namespace {
 
-hardware_limits limits{
+hardware_limits const limits{
     .VCO_LO = 4'850'000'000,
     .VCO_HI = 5'670'000'000,
     .F3_LO = 2'000,

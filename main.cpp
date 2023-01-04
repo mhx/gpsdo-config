@@ -196,7 +196,7 @@ int gpsdo_main(int argc, char** argv) {
     f2 = parse_fraction(f2_str);
   }
 
-  hardware_limits limits{
+  hardware_limits const limits{
       // Source: Silicon Labs Si53xx-RM Rev. 1.3, Table 26
       .VCO_LO = 4'850'000'000,
       .VCO_HI = 5'670'000'000,
@@ -207,7 +207,7 @@ int gpsdo_main(int argc, char** argv) {
       .GPS_HI = 10'000'000,
   };
 
-  hardware_limits relaxed_limits{
+  hardware_limits const relaxed_limits{
       // Source: lb-gps-linux source code
       .VCO_LO = 3'500'000'000,
       .VCO_HI = 6'500'000'000,
