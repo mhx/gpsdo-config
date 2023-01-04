@@ -291,7 +291,7 @@ std::vector<solution> find_solutions(
               fGPS = f3_N2_num;
             } else {
               // Find the largest factor in f3_N2's numerator that is less than
-              // gps_hi.
+              // or equal to gps_hi.
               fGPS = largest_factor(f3_N2_num, gps_hi);
               N2_LS_cand *= f3_N2_num / fGPS;
             }
