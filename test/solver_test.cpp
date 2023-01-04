@@ -13,6 +13,14 @@ hardware_limits const limits{
     .GPS_HI = 10'000'000,
 };
 
+hardware_limits const relaxed_limits{
+    .VCO_LO = 3'500'000'000,
+    .VCO_HI = 6'500'000'000,
+    .F3_LO = 2'000,
+    .F3_HI = 2'000'000,
+    .GPS_HI = 10'000'000,
+};
+
 bool check_solution(
     solution const& sol,
     hardware_limits const& lim,
@@ -66,5 +74,45 @@ TEST(Solver, BasicTest) {
   for (auto const& s : solutions) {
     EXPECT_TRUE(
         check_solution(s, limits, rat64(123'431, 100), rat64(5'432, 1)));
+  }
+}
+
+// See https://github.com/mhx/gpsdo-config/issues/2
+TEST(Solver, RegressionGithub2) {
+  struct {
+    uint32_t f1;
+    uint32_t f2;
+    uint64_t fGPS;
+    uint64_t N31;
+  } const test_cases[] = {
+      {8'765, 4'321, 9'925'486, 5},
+      {4'681, 8'729, 5'972'956, 3},
+      {4'681, 8'701, 5'972'050, 3},
+  };
+
+  GTEST_SKIP();
+
+  for (auto const& tc : test_cases) {
+    auto solutions = find_solutions(
+        rat64(tc.f1, 1), rat64(tc.f2, 1), relaxed_limits, find::best);
+    ASSERT_EQ(solutions.size(), 1);
+    auto const& s = solutions.front();
+    EXPECT_EQ(s.fGPS, tc.fGPS);
+    EXPECT_EQ(s.N31, tc.N31);
+    EXPECT_TRUE(
+        check_solution(s, relaxed_limits, rat64(tc.f1, 1), rat64(tc.f2, 1)));
+  }
+
+  for (auto const& tc : test_cases) {
+    auto solutions = find_solutions(
+        rat64(tc.f1, 1), rat64(tc.f2, 1), relaxed_limits, find::all);
+    ASSERT_GT(solutions.size(), 1);
+    auto const& s = solutions.front();
+    EXPECT_EQ(s.fGPS, tc.fGPS);
+    EXPECT_EQ(s.N31, tc.N31);
+    for (auto const& s : solutions) {
+      EXPECT_TRUE(
+          check_solution(s, relaxed_limits, rat64(tc.f1, 1), rat64(tc.f2, 1)));
+    }
   }
 }
