@@ -114,3 +114,24 @@ TEST(Solver, RegressionGithub2) {
     }
   }
 }
+
+TEST(Solver, ExtremeTest) {
+  struct {
+    rat64 f1;
+    rat64 f2;
+    uint64_t num;
+  } const test_cases[] = {
+      {rat64(450, 1), rat64(675, 1), 370'505},
+      {rat64(450, 1), rat64(46'800'000, 1), 36},
+      {rat64(300'000'000, 1'531), rat64(1'200'000'000, 1'531), 2'072},
+      {rat64(5'000'000, 4'999), rat64(2'500'000'000'000, 4'999), 4},
+  };
+
+  for (auto const& tc : test_cases) {
+    auto solutions = find_solutions(tc.f1, tc.f2, limits, find::all);
+    EXPECT_EQ(solutions.size(), tc.num);
+    for (auto const& s : solutions) {
+      EXPECT_TRUE(check_solution(s, limits, tc.f1, tc.f2));
+    }
+  }
+}
