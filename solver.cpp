@@ -27,6 +27,12 @@
 #include <optional>
 #include <unordered_set>
 
+#define SOLVER_DEBUG_STDOUT 0
+
+#if SOLVER_DEBUG_STDOUT
+#include <iostream>
+#endif
+
 #include <boost/functional/hash.hpp>
 #include <boost/integer/common_factor.hpp>
 #include <boost/numeric/conversion/cast.hpp>
@@ -238,6 +244,12 @@ std::vector<solution> find_solutions(
       assert(is_in_ncx_ls_range(NC2_LS));
 
       auto fOSC = fLCM * q * N1_HS;
+
+#if SOLVER_DEBUG_STDOUT
+      std::cout << "N1_HS=" << N1_HS << ", fN1=" << fN1 << ", q_lo=" << q_lo
+                << ", q_hi=" << q_hi << ", q=" << q << ", NC1_LS=" << NC1_LS
+                << ", NC2_LS=" << NC2_LS << ", fOSC=" << fOSC << "\n";
+#endif
 
       if (fOSC_seen.insert(fOSC).second) {
         // Generate a list of candidates for N2_HS. We start by filling the list
