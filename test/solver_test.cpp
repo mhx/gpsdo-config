@@ -64,7 +64,7 @@ bool check_solution(
 TEST(Solver, BasicTest) {
   auto solutions
       = find_solutions(rat64(123'431, 100), rat64(5'432, 1), limits, find::all);
-  ASSERT_EQ(solutions.size(), 16);
+  ASSERT_EQ(solutions.size(), 56);
   auto const& s = solutions.front();
   auto f3_got = rat64{s.fGPS, s.N31};
   auto f3_exp = rat64(1'974'896, 1);
@@ -89,8 +89,6 @@ TEST(Solver, RegressionGithub2) {
       {4'681, 8'729, 5'972'956, 3},
       {4'681, 8'701, 5'972'050, 3},
   };
-
-  GTEST_SKIP();
 
   for (auto const& tc : test_cases) {
     auto solutions = find_solutions(

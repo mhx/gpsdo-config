@@ -171,6 +171,7 @@ std::vector<solution> find_solutions(
   int64_t constexpr NCn_LS_MAX = 1 << 20;
   int64_t constexpr N2_LS_MAX = 1 << 20;
   int64_t constexpr N3_MAX = 1 << 19;
+  int64_t const N31_MAX = std::min(N3_MAX, limits.GPS_HI / limits.F3_LO);
 
   //
   // We need to find a configuration for the Si53xx that can represent both
@@ -269,63 +270,76 @@ std::vector<solution> find_solutions(
 
         for (auto N2_HS : N2_HS_candidates) {
           auto const f3_N2 = fOSC / (2 * N2_HS);
-          auto const N31_cand = f3_N2.denominator();
 
-          if (N31_cand > N3_MAX) {
+          if (f3_N2.denominator() > N31_MAX) {
             continue;
           }
 
-          // Compute the upper limit for the GPS frequency.
-          auto const gps_hi
-              = std::min<int64_t>(limits.GPS_HI, N31_cand * limits.F3_HI);
-          int64_t N2_LS_cand = 2;
-          int64_t fGPS;
+          auto const k_hi = std::max(
+              INT64_C(1), limits.GPS_HI / (f3_N2.denominator() * limits.F3_HI));
 
-          if (f3_N2.numerator() <= gps_hi) {
-            fGPS = f3_N2.numerator();
-          } else {
-            // Find the largest factor in f3_N2's numerator that is less than
-            // gps_hi.
-            fGPS = largest_factor(f3_N2.numerator(), gps_hi);
-            N2_LS_cand *= f3_N2.numerator() / fGPS;
-          }
+          for (int k = 1; k <= k_hi; ++k) {
+            // Compute the upper limit for the GPS frequency.
+            auto const N31_cand = k * f3_N2.denominator();
+            auto const f3_N2_num = k * f3_N2.numerator();
+            auto const gps_hi
+                = std::min<int64_t>(limits.GPS_HI, N31_cand * limits.F3_HI);
+            int64_t N2_LS_cand = 2;
+            int64_t fGPS;
 
-          if (N2_LS_cand > N2_LS_MAX
-              or static_cast<double>(fGPS) / N31_cand < limits.F3_LO) {
-            continue;
-          }
-
-          // We have found a new possible solution.
-          solution sol{
-              .fGPS = boost::numeric_cast<uint32_t>(fGPS),
-              .N31 = boost::numeric_cast<uint32_t>(N31_cand),
-              .N1_HS = N1_HS,
-              .NC1_LS = boost::numeric_cast<uint32_t>(NC1_LS),
-              .NC2_LS = boost::numeric_cast<uint32_t>(NC2_LS),
-              .N2_HS = N2_HS,
-              .N2_LS = boost::numeric_cast<uint32_t>(N2_LS_cand),
-          };
-
-          if (found and algorithm != find::all) {
-            if (sol < solutions[0]) {
-              solutions[0] = sol;
-            }
-          } else {
-            solutions.emplace_back(sol);
-          }
-
-          if (algorithm != find::all) {
-            auto f3r = N31_cand * limits.F3_HI;
-            auto fnd = f3r == fGPS       ? find::best
-                       : f3r <= fGPS * 2 ? find::good
-                                         : find::any;
-
-            if (!found or fnd > *found) {
-              found = fnd;
+            if (f3_N2_num <= gps_hi) {
+              fGPS = f3_N2_num;
+            } else {
+              // Find the largest factor in f3_N2's numerator that is less than
+              // gps_hi.
+              fGPS = largest_factor(f3_N2_num, gps_hi);
+              N2_LS_cand *= f3_N2_num / fGPS;
             }
 
-            if (*found >= algorithm) {
-              break;
+#if SOLVER_DEBUG_STDOUT
+            std::cout << "  N2_HS=" << N2_HS << ", N31_cand=" << N31_cand
+                      << ", gps_hi=" << gps_hi << ", f3_N2=" << f3_N2
+                      << ", k=" << k << ", fGPS=" << fGPS
+                      << ", N2_LS_cand=" << N2_LS_cand << "\n";
+#endif
+
+            if (N2_LS_cand > N2_LS_MAX
+                or static_cast<double>(fGPS) / N31_cand < limits.F3_LO) {
+              continue;
+            }
+
+            // We have found a new possible solution.
+            solution sol{
+                .fGPS = boost::numeric_cast<uint32_t>(fGPS),
+                .N31 = boost::numeric_cast<uint32_t>(N31_cand),
+                .N1_HS = N1_HS,
+                .NC1_LS = boost::numeric_cast<uint32_t>(NC1_LS),
+                .NC2_LS = boost::numeric_cast<uint32_t>(NC2_LS),
+                .N2_HS = N2_HS,
+                .N2_LS = boost::numeric_cast<uint32_t>(N2_LS_cand),
+            };
+
+            if (found and algorithm != find::all) {
+              if (sol < solutions[0]) {
+                solutions[0] = sol;
+              }
+            } else {
+              solutions.emplace_back(sol);
+            }
+
+            if (algorithm != find::all) {
+              auto f3r = N31_cand * limits.F3_HI;
+              auto fnd = f3r == fGPS       ? find::best
+                         : f3r <= fGPS * 2 ? find::good
+                                           : find::any;
+
+              if (!found or fnd > *found) {
+                found = fnd;
+              }
+
+              if (*found >= algorithm) {
+                break;
+              }
             }
           }
         }
